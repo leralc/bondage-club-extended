@@ -596,6 +596,7 @@ type RuleCustomData = {
 };
 
 type RuleInternalData = {
+	alt_allow_changing_appearance: Record<number, number>;
 	alt_set_nickname: string;
 	setting_forbid_lockpicking: boolean;
 	setting_forbid_SP_rooms: boolean;

@@ -1037,9 +1037,19 @@ export function initRules_bc_alter() {
 				description: "Minimum role that is allowed:",
 			},
 		},
+		internalDataDefault: (): Record<number, number> => ({}),
+		internalDataValidate: (data): data is Record<number, number> => isObject(data),
+		stateChange: (state, newState) => {
+			if (state.internalData && (!newState || !state.inEffect)) state.internalData = {};
+		},
 		init(state) {
 			queryHandlers.rule_alt_allow_changing_appearance = (sender) => {
 				return state.inEffect && !!state.customData && getCharacterAccessLevel(sender) <= state.customData.minimumRole;
+			};
+			queryHandlers.rule_alt_allow_changing_appearance_trigger = (sender) => {
+				if (!state.inEffect || !state.internalData) return false;
+				state.internalData[sender.MemberNumber] = Date.now();
+				return true;
 			};
 			let appearanceCharacterAllowed: null | number = null;
 			hookFunction("CharacterAppearanceLoadCharacter", 0, (args, next) => {
@@ -1052,6 +1062,12 @@ export function initRules_bc_alter() {
 							appearanceCharacterAllowed = char.MemberNumber;
 						}
 					});
+					return next([args[0], (ready) => {
+						args[1](ready);
+						if (appearanceCharacterAllowed === char.MemberNumber)
+							sendQuery("rule_alt_allow_changing_appearance_trigger", undefined, char.MemberNumber).then();
+						appearanceCharacterAllowed = null;
+					}]);
 				}
 				return next(args);
 			}, null);
@@ -1091,6 +1107,21 @@ export function initRules_bc_alter() {
 					}
 				}
 				return next(args);
+			}, ModuleCategory.Rules);
+			hookFunction("ChatRoomSyncSingle", 0, (args, next) => {
+				const { SourceMemberNumber, Character } = args[0];
+				const returnVal = next(args);
+
+				if (!state.inEffect || !Character.Appearance) return returnVal;
+				if (!state.internalData || !Object.prototype.hasOwnProperty.call(state.internalData, SourceMemberNumber)) return returnVal;
+				if (!allow(SourceMemberNumber)) return returnVal;
+
+				const triggerTimestamp = state.internalData[SourceMemberNumber];
+				delete state.internalData[SourceMemberNumber];
+				if (Date.now() - triggerTimestamp > 2000) return returnVal;
+
+				ChatRoomCharacterUpdate(Player);
+				return returnVal;
 			}, ModuleCategory.Rules);
 		},
 	});

@@ -157,6 +157,7 @@ type BCX_queries = {
 	ruleCreate: [BCX_Rule, boolean];
 	ruleDelete: [BCX_Rule, boolean];
 	rule_alt_allow_changing_appearance: [undefined, boolean];
+	rule_alt_allow_changing_appearance_trigger: [undefined, boolean];
 	commandTrigger: [[BCX_Command, ...string[]], boolean];
 	export_import_do_export: [{
 		category: string;
